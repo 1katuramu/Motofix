@@ -31,7 +31,7 @@ def load_native_model():
     return booster
 try:
     model = load_native_model()
-    st.sidebar.success(" Native JSON Model Loaded Successfully")
+    st.sidebar.success(" Model Loaded Successfully")
 except FileNotFoundError:
     st.sidebar.error(
         f"❌ Model file not found.\n\n"
