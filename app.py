@@ -25,9 +25,10 @@ def manual_scaling(df_row):
 # ── 4. Load Native Model Safely ──────────────────────────────────────────────
 @st.cache_resource
 def load_native_model():
-    model = xgb.XGBClassifier()
-    model.load_model(MODEL_PATH)
-    return model
+    # Use native Booster — no sklearn dependency required
+    booster = xgb.Booster()
+    booster.load_model(MODEL_PATH)
+    return booster
 
 # Debug helpers (remove once confirmed working)
 with st.sidebar.expander("🔍 Model Path Debug", expanded=False):
@@ -127,9 +128,12 @@ if st.button("🚀 Run Intelligent Match Diagnostics", type="primary"):
         # Enforce exact column order required by XGBoost
         scaled_features = scaled_features[FINAL_COLUMN_ORDER]
 
-        # Predict
+        # Predict using native Booster (no sklearn needed)
+        dmatrix = xgb.DMatrix(scaled_features)
         viable = viable.copy()
-        viable["match_probability"] = model.predict_proba(scaled_features)[:, 1]
+        preds = model.predict(dmatrix)
+        # Booster.predict() returns raw scores for binary:logistic — already probabilities
+        viable["match_probability"] = preds if preds.ndim == 1 else preds[:, 1]
         ranked_pool = viable.sort_values(by="match_probability", ascending=False)
         winner = ranked_pool.iloc[0]
 
