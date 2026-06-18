@@ -30,7 +30,12 @@ def manual_scaling(df_row):
 @st.cache_resource
 def load_native_model():
     model = xgb.XGBClassifier()
-    model.load_model('motofix_xgb_model.json')
+    
+    # Dynamically look for the folder app.py is running inside on the cloud server
+    base_path = os.path.dirname(__file__)
+    model_path = os.path.join(base_path, 'motofix_xgb_model.json')
+    
+    model.load_model(model_path)
     return model
 
 try:
