@@ -5,7 +5,7 @@ import numpy as np
 import xgboost as xgb
 
 # ── 1. Page Configuration ────────────────────────────────────────────────────
-st.set_page_config(page_title="MotoFix AI Dispatch Engine", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="MotoFix Intelligent Dispatch Engine", page_icon="⚡", layout="wide")
 st.title("⚡ MotoFix Intelligent Mechanic Matching Engine")
 
 # ── 2. Absolute Model Path (works regardless of launch directory) ─────────────
@@ -29,15 +29,9 @@ def load_native_model():
     booster = xgb.Booster()
     booster.load_model(MODEL_PATH)
     return booster
-
-# Debug helpers (remove once confirmed working)
-with st.sidebar.expander("🔍 Model Path Debug", expanded=False):
-    st.code(MODEL_PATH)
-    st.write("File found:" , os.path.exists(MODEL_PATH))
-
 try:
     model = load_native_model()
-    st.sidebar.success("✅ Native JSON Model Loaded Successfully")
+    st.sidebar.success(" Native JSON Model Loaded Successfully")
 except FileNotFoundError:
     st.sidebar.error(
         f"❌ Model file not found.\n\n"
@@ -50,7 +44,7 @@ except Exception as e:
     st.stop()
 
 # ── 5. Sidebar – Breakdown Ticket ────────────────────────────────────────────
-st.sidebar.header("📋 Current Breakdown Ticket")
+st.sidebar.header("Current Breakdowns")
 zone = st.sidebar.selectbox(
     "Incident Zone",
     ["Kampala Central", "Kawempe", "Makindye", "Nakawa", "Rubaga"],
@@ -61,7 +55,7 @@ breakdown_type = st.sidebar.selectbox(
 )
 
 # ── 6. Mechanic Input Panel ──────────────────────────────────────────────────
-st.header("🔧 Available Regional Field Agents")
+st.header("🔧 Available Mechanics")
 col1, col2, col3 = st.columns(3)
 
 with col1:
@@ -107,12 +101,12 @@ candidates_df = pd.DataFrame([
 ])
 
 # ── 8. Run Matching Engine ───────────────────────────────────────────────────
-if st.button("🚀 Run Intelligent Match Diagnostics", type="primary"):
+if st.button(" Run Intelligent Match Diagnostics", type="primary"):
 
     viable = candidates_df[candidates_df["available"] == 1].copy()
 
     if viable.empty:
-        st.error("🚨 CRITICAL ALERT: No field agents are currently online.")
+        st.error(" CRITICAL ALERT: No Mechanics are currently online.")
     else:
         # Scale features
         scaled_features = manual_scaling(
@@ -142,7 +136,7 @@ if st.button("🚀 Run Intelligent Match Diagnostics", type="primary"):
             f"— confidence fit: **{winner['match_probability']:.2%}**"
         )
 
-        st.subheader("📊 Full Dispatch Rank Analysis")
+        st.subheader("Full Dispatch Rank Analysis")
         st.dataframe(
             ranked_pool[["mechanic_id", "proximity_km", "spec_match", "star_rating", "match_probability"]]
             .reset_index(drop=True),
