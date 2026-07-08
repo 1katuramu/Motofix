@@ -1,80 +1,48 @@
-MotoFix — Intelligent Mechanic Matching Engine
+# MotoFix — Intelligent Mechanic Matching Engine
 
-MotoFix is a Streamlit demo application that recommends which mechanic should be dispatched to a vehicle breakdown. Given an incident's zone and breakdown type, plus live details on up to three candidate mechanics (distance, specialization match, rating, availability, and jobs completed), it scores each candidate with a trained XGBoost model and recommends the best match.
+MotoFix is a small Streamlit app that picks the best mechanic to dispatch for a roadside breakdown. Instead of just sending whoever is closest, it scores each available mechanic with a trained XGBoost model that weighs distance, specialization match, rating, and job history together, then ranks them.
 
-How It Works
+It was built around a real problem for roadside assistance dispatch in Kampala: proximity alone is a bad signal, because the nearest mechanic isn't always the right one if they don't specialize in the fault or have a poor track record.
 
+## How it works
 
-Pick the incident context in the sidebar — the zone (e.g. Kawempe, Rubaga, Kampala Central) and the breakdown type (e.g. Electrical Fault, Engine Stalled, Flat Tyre).
-Enter candidate mechanic details in the three columns (distance in km, whether their specialization matches the breakdown, star rating, online/available toggle, and jobs completed).
-Run the matching engine. The app filters out unavailable mechanics, scales/encodes the remaining candidates' features, and scores them with a pretrained XGBoost model loaded from motofix_xgb_model.json.
-View the result — the top-ranked mechanic is highlighted as the recommended dispatch, with a full ranked table showing every viable candidate's match probability.
+You pick the breakdown's zone and type in the sidebar, then fill in up to three candidate mechanics (distance, specialization match, star rating, whether they're online, jobs completed). Hit the button and the app:
 
+1. Filters out anyone not marked available
+2. Scales the numeric features to match what the model was trained on
+3. One-hot encodes the zone and breakdown type
+4. Runs everything through the XGBoost booster
+5. Ranks the mechanics by match probability and shows the winner
 
-Project Structure
+The three mechanics in the demo (Kamya, Mukasa, Nsubuga) are just placeholders for testing — in a real deployment these would come from a live pool of available mechanics.
 
-Motofix-main/
-├── app.py                                # Streamlit application (UI + inference)
-├── requirements.txt                      # Python dependencies
-├── motofix_xgb_model.json                # Trained XGBoost booster (native format, loaded at runtime)
-├── motofix_match_model.pkl                # Serialized model artifact (alternate/reference copy)
-├── dispatch_preprocessor.pkl              # Serialized preprocessing artifact (alternate/reference copy)
-└── motofix_unbiased_matching_data.csv     # Training/reference dataset (5,000 mechanic-candidate rows)
+## Project files
 
-Model & Features
+- `app.py` — the Streamlit app itself
+- `motofix_xgb_model.json` — the trained XGBoost model, loaded directly via the native Booster API (no scikit-learn dependency needed at inference time)
+- `motofix_match_model.pkl` / `dispatch_preprocessor.pkl` — earlier pickled versions of the model and preprocessing pipeline, kept for reference/retraining
+- `motofix_unbiased_matching_data.csv` — the training data: 5,000 requests across 5 zones and 5 breakdown types, with mechanic-level features and a `best_mechanic_selected` label
+- `requirements.txt` — Python dependencies
 
-The app loads motofix_xgb_model.json directly with XGBoost's native Booster API (no scikit-learn dependency required at inference time). Before scoring, each candidate mechanic's raw inputs are transformed to match what the model was trained on:
+## Running it
 
+You'll need Python 3.9+ installed.
 
-Numeric features (proximity_km, star_rating, jobs_completed) are standardized using fixed mean/scale constants baked into app.py.
-spec_match (whether the mechanic's specialization matches the breakdown) is boosted with an amplified weight.
-Zone and breakdown type are one-hot encoded to match the exact column order the model expects.
-
-
-The training data (motofix_unbiased_matching_data.csv) contains historical dispatch records across five Kampala-area zones and five breakdown types, with a best_mechanic_selected label used to train the matching model.
-
-
-Note: the .pkl files (motofix_match_model.pkl, dispatch_preprocessor.pkl) are not loaded by app.py at runtime — the app re-implements scaling manually and loads the model from the native JSON format instead. They're included as reference/original training artifacts.
-
-
-
-Requirements
-
-
-Python 3.9+
-Dependencies listed in requirements.txt:
-
-streamlit
-pandas
-numpy
-xgboost
-joblib
-
-
-
-
-
-Setup & Running
-
-bash# Navigate to the project folder
-cd Motofix-main
-
-# (Optional) create a virtual environment
-python -m venv venv
-source venv/bin/activate      # macOS/Linux
-venv\Scripts\activate         # Windows
-
-# Install dependencies
+```bash
 pip install -r requirements.txt
-
-# Run the app
 streamlit run app.py
+```
 
-Streamlit will open the app in your browser (default: http://localhost:8501). Make sure motofix_xgb_model.json stays in the same folder as app.py — the app resolves the model path relative to its own location, so it works regardless of the directory you launch it from.
+Streamlit will open the app in your browser (usually at `http://localhost:8501`). Make sure `motofix_xgb_model.json` stays in the same folder as `app.py` — the app resolves it relative to its own location, so it doesn't matter what directory you launch it from.
 
-Notes & Limitations
+## Notes on the model
 
+The scaling used at inference time (`manual_scaling` in `app.py`) hard-codes the mean/variance the original `StandardScaler` learned during training, rather than loading the `.pkl` preprocessor. This was done so the app has no scikit-learn dependency at runtime — only `xgboost` is needed to run predictions. If the model gets retrained on new data, these constants need to be updated to match.
 
-The demo panel is limited to three mechanics (A, B, C) entered manually; it's a proof-of-concept UI rather than a live dispatch integration.
-The scaling constants in manual_scaling() are fixed values derived from the original training data rather than being recomputed dynamically, so they should be retrained/updated if the underlying data distribution changes.
-Zones and breakdown types are limited to the fixed lists defined in app.py (EXPECTED_ZONES, EXPECTED_BREAKDOWNS); new categories would require retraining the model and updating these lists together.
+The dataset name says "unbiased," but that just means known confounds (like the model always winning on distance) were deliberately balanced out during data generation — it's synthetic data, not something pulled from live dispatch logs.
+
+## Possible next steps
+
+- Replace the manual sidebar entry with a real mechanic pool (pulled from a database or API)
+- Add authentication so this isn't a public-facing dispatch tool
+- Retrain periodically as more real dispatch outcomes come in, and swap the synthetic dataset for actual historical data
